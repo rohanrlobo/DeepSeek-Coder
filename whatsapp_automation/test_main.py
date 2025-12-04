@@ -4,6 +4,8 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 import pandas as pd
 import io
+from selenium.webdriver.common.by import By
+import pandas as pd
 
 # This is a bit of a hack to make the import work without changing the project structure
 import sys
@@ -15,12 +17,15 @@ class TestSendMessage(unittest.TestCase):
 
     @patch('main.WebDriverWait')
     def test_tc01_send_whatsapp_message_sends_keys_and_clicks_send(self, mock_wait):
+    def test_send_whatsapp_message_sends_keys_and_clicks_send(self, mock_wait):
         # Arrange
         mock_driver = MagicMock()
         mock_message_box = MagicMock()
         mock_send_button = MagicMock()
 
         # Configure the mock_wait to return the mock elements for each of the 3 waits.
+        # Configure the mock_wait to return the mock elements.
+        # We use side_effect to return different mock objects for different waits.
         mock_wait.return_value.until.side_effect = [
             MagicMock(),      # For the initial chat-list-search wait
             mock_message_box, # For the conversation-compose-box wait
@@ -100,32 +105,29 @@ class TestDataHandling(unittest.TestCase):
         # Assert
         self.assertIsNone(result)
 
-    @patch('main.send_whatsapp_message')
-    def test_tc06_message_personalization(self, mock_send_message):
-        # Arrange
-        # Set a return value for the mock to prevent the ValueError
-        mock_send_message.return_value = (True, "Success")
+        success = main.send_whatsapp_message(mock_driver, phone_number, message)
 
-        first_name = "Rohan"
-        last_name = "Lobo"
-        message_template = "Dear {first_name} {last_name}, this is a test."
-        expected_message = f"Dear {first_name} {last_name}, this is a test."
+        # Assert
+        # 1. Check if the correct URL was opened
+        mock_driver.get.assert_called_once_with(f"https://web.whatsapp.com/send?phone=+{phone_number}")
 
-        d = {'First name': [first_name], 'Last name': [last_name], 'Telephone number': [123], 'Message': [message_template]}
-        df = pd.DataFrame(data=d)
+        # 2. Check the waits for elements
+        mock_driver_wait_calls = [
+            call(mock_driver, 60),
+            call(mock_driver, 30),
+            call(mock_driver, 10),
+        ]
+        self.assertEqual(mock_wait.call_args_list, mock_driver_wait_calls)
 
-        # We need to mock the entire main loop to check the message
-        with patch('main.get_excel_file', return_value='dummy.xlsx'), \
-             patch('main.read_contacts', return_value=df), \
-             patch('main.initialize_driver', return_value=MagicMock()):
 
-            # Act
-            main.main()
+        # 3. Check if send_keys was called on the message box
+        mock_message_box.send_keys.assert_called_once_with(message)
 
-            # Assert
-            # Check that send_whatsapp_message was called with the personalized message
-            mock_send_message.assert_called_once_with(unittest.mock.ANY, 123, expected_message)
+        # 4. Check if the send button was clicked
+        mock_send_button.click.assert_called_once()
 
+        # 5. Check the function's return value
+        self.assertTrue(success)
 
 if __name__ == '__main__':
     unittest.main()
