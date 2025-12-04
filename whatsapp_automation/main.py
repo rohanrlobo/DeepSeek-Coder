@@ -64,20 +64,20 @@ def send_whatsapp_message(driver, phone_number, message):
         if not str(phone_number).startswith('+'):
             phone_number = '+' + str(phone_number)
 
-        # URL-encode the message
-        encoded_message = urllib.parse.quote(message)
-
         # Create the URL to open a chat
-        url = f"https://web.whatsapp.com/send?phone={phone_number}&text={encoded_message}"
+        url = f"https://web.whatsapp.com/send?phone={phone_number}"
         driver.get(url)
 
-        # Wait for the message box to be ready
-        message_box = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//div[@role="textbox"]')))
+        # Wait for the message box to be ready and type the message
+        message_box = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.XPATH, '//div[@data-testid="conversation-compose-box"]//div[@role="textbox"]'))
+        )
+        message_box.send_keys(message)
 
         # Click the send button
         send_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="send"]')))
+            EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="send"]'))
+        )
         send_button.click()
 
         time.sleep(random.uniform(1, 3))  # Random delay
