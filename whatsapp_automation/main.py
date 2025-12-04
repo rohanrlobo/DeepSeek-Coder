@@ -81,16 +81,19 @@ def send_whatsapp_message(driver, phone_number, message):
         send_button.click()
 
         time.sleep(random.uniform(1, 3))  # Random delay
-        return True
+        return True, "Message sent successfully."
     except TimeoutException:
-        print(f"Timed out waiting for element for {phone_number}.")
-        return False
+        error_message = f"Timed out waiting for element for {phone_number}. The number might be invalid or not on WhatsApp."
+        print(error_message)
+        return False, error_message
     except NoSuchElementException:
-        print(f"Could not find an element for {phone_number}.")
-        return False
+        error_message = f"Could not find an element for {phone_number}. The WhatsApp Web interface might have changed."
+        print(error_message)
+        return False, error_message
     except Exception as e:
-        print(f"An error occurred while sending a message to {phone_number}: {e}")
-        return False
+        error_message = f"An unexpected error occurred for {phone_number}: {e}"
+        print(error_message)
+        return False, error_message
 
 def main():
     """Main function to run the application."""
@@ -115,14 +118,14 @@ def main():
                 personalized_message = message.replace('{first_name}', str(first_name)).replace('{last_name}', str(last_name))
 
                 print(f"Sending message to {first_name} {last_name} ({phone_number})...")
-                success = send_whatsapp_message(driver, phone_number, personalized_message)
+                success, status_message = send_whatsapp_message(driver, phone_number, personalized_message)
 
                 if success:
                     print("Message sent successfully.")
                     log.append({'phone_number': phone_number, 'status': 'Success'})
                 else:
                     print("Failed to send message.")
-                    log.append({'phone_number': phone_number, 'status': 'Failed'})
+                    log.append({'phone_number': phone_number, 'status': status_message})
 
             driver.quit()
             log_df = pd.DataFrame(log)
