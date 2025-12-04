@@ -64,33 +64,36 @@ def send_whatsapp_message(driver, phone_number, message):
         if not str(phone_number).startswith('+'):
             phone_number = '+' + str(phone_number)
 
-        # URL-encode the message
-        encoded_message = urllib.parse.quote(message)
-
         # Create the URL to open a chat
-        url = f"https://web.whatsapp.com/send?phone={phone_number}&text={encoded_message}"
+        url = f"https://web.whatsapp.com/send?phone={phone_number}"
         driver.get(url)
 
-        # Wait for the message box to be ready
-        message_box = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//div[@role="textbox"]')))
+        # Wait for the message box to be ready and type the message
+        message_box = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.XPATH, '//div[@data-testid="conversation-compose-box"]//div[@role="textbox"]'))
+        )
+        message_box.send_keys(message)
 
         # Click the send button
         send_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="send"]')))
+            EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="send"]'))
+        )
         send_button.click()
 
         time.sleep(random.uniform(1, 3))  # Random delay
-        return True
+        return True, "Message sent successfully."
     except TimeoutException:
-        print(f"Timed out waiting for element for {phone_number}.")
-        return False
+        error_message = f"Timed out waiting for element for {phone_number}. The number might be invalid or not on WhatsApp."
+        print(error_message)
+        return False, error_message
     except NoSuchElementException:
-        print(f"Could not find an element for {phone_number}.")
-        return False
+        error_message = f"Could not find an element for {phone_number}. The WhatsApp Web interface might have changed."
+        print(error_message)
+        return False, error_message
     except Exception as e:
-        print(f"An error occurred while sending a message to {phone_number}: {e}")
-        return False
+        error_message = f"An unexpected error occurred for {phone_number}: {e}"
+        print(error_message)
+        return False, error_message
 
 def main():
     """Main function to run the application."""
@@ -115,14 +118,14 @@ def main():
                 personalized_message = message.replace('{first_name}', str(first_name)).replace('{last_name}', str(last_name))
 
                 print(f"Sending message to {first_name} {last_name} ({phone_number})...")
-                success = send_whatsapp_message(driver, phone_number, personalized_message)
+                success, status_message = send_whatsapp_message(driver, phone_number, personalized_message)
 
                 if success:
                     print("Message sent successfully.")
                     log.append({'phone_number': phone_number, 'status': 'Success'})
                 else:
                     print("Failed to send message.")
-                    log.append({'phone_number': phone_number, 'status': 'Failed'})
+                    log.append({'phone_number': phone_number, 'status': status_message})
 
             driver.quit()
             log_df = pd.DataFrame(log)
