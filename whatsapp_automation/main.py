@@ -53,6 +53,26 @@ def initialize_driver():
         print("Please make sure you have Google Chrome installed.")
         return None
 
+def format_phone_number(phone_number):
+    """Formats the phone number.
+    If the number is 10 digits, it appends +91.
+    If the number doesn't start with +, it adds it.
+    """
+    phone_str = str(phone_number).strip()
+
+    # Remove .0 if it exists (common float artifact from Excel)
+    if phone_str.endswith('.0'):
+        phone_str = phone_str[:-2]
+
+    # Check if it is exactly 10 digits (assuming numeric only)
+    if phone_str.isdigit() and len(phone_str) == 10:
+        return f"+91{phone_str}"
+
+    if not phone_str.startswith('+'):
+        return '+' + phone_str
+
+    return phone_str
+
 def send_whatsapp_message(driver, phone_number, message):
     """Sends a WhatsApp message to a given phone number."""
     try:
@@ -61,8 +81,7 @@ def send_whatsapp_message(driver, phone_number, message):
             EC.presence_of_element_located((By.XPATH, '//div[@data-testid="chat-list-search"]')))
 
         # Format the phone number
-        if not str(phone_number).startswith('+'):
-            phone_number = '+' + str(phone_number)
+        phone_number = format_phone_number(phone_number)
 
         # Create the URL to open a chat
         url = f"https://web.whatsapp.com/send?phone={phone_number}"
