@@ -43,8 +43,11 @@ def initialize_driver():
     """Initializes the Chrome WebDriver using webdriver-manager."""
     try:
         print("Setting up ChromeDriver...")
+        options = webdriver.ChromeOptions()
+        # Keep the browser open even if the script finishes or crashes (helps with debugging and user experience)
+        options.add_experimental_option("detach", True)
         service = ChromeService(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service)
+        driver = webdriver.Chrome(service=service, options=options)
         driver.get("https://web.whatsapp.com")
         print("Please scan the QR code to log in to WhatsApp Web.")
         return driver
@@ -122,12 +125,17 @@ def main():
         driver = initialize_driver()
         if driver:
             # Wait for user to confirm they are ready (e.g., after scanning QR code)
-            while True:
-                user_input = input("Please scan the QR code and type 'PROCEED' to start sending messages: ")
-                if user_input.strip() == 'PROCEED':
-                    break
-                else:
-                    print("Invalid input. Please type 'PROCEED' when ready.")
+            try:
+                while True:
+                    user_input = input("Please scan the QR code and type 'PROCEED' to start sending messages: ")
+                    if user_input.strip() == 'PROCEED':
+                        break
+                    else:
+                        print("Invalid input. Please type 'PROCEED' when ready.")
+            except (EOFError, KeyboardInterrupt):
+                print("\nInput stream closed or interrupted. Exiting.")
+                driver.quit()
+                return
 
             log = []
             for index, row in contacts_df.iterrows():

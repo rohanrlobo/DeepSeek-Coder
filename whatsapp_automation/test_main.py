@@ -146,5 +146,17 @@ class TestIntegration(unittest.TestCase):
         self.assertEqual(mock_input.call_count, 2)
         mock_send.assert_called_once()
 
+    @patch('main.webdriver.Chrome')
+    @patch('main.ChromeService')
+    @patch('main.ChromeDriverManager')
+    @patch('main.webdriver.ChromeOptions')
+    def test_tc08_initialize_driver_options(self, mock_options, mock_manager, mock_service, mock_chrome):
+        # Act
+        main.initialize_driver()
+
+        # Assert
+        mock_options.return_value.add_experimental_option.assert_called_with("detach", True)
+        mock_chrome.assert_called_with(service=mock_service.return_value, options=mock_options.return_value)
+
 if __name__ == '__main__':
     unittest.main()
