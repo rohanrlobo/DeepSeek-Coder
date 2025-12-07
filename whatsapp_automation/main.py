@@ -61,8 +61,16 @@ def send_whatsapp_message(driver, phone_number, message):
             EC.presence_of_element_located((By.XPATH, '//div[@data-testid="chat-list-search"]')))
 
         # Format the phone number
-        if not str(phone_number).startswith('+'):
-            phone_number = '+' + str(phone_number)
+        phone_str = str(phone_number)
+        if phone_str.endswith('.0'):
+            phone_str = phone_str[:-2]
+
+        if len(phone_str) == 10 and phone_str.isdigit():
+            phone_number = '+91' + phone_str
+        elif not phone_str.startswith('+'):
+            phone_number = '+' + phone_str
+        else:
+            phone_number = phone_str
 
         # Create the URL to open a chat
         url = f"https://web.whatsapp.com/send?phone={phone_number}"
