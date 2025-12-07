@@ -121,6 +121,14 @@ def main():
     if contacts_df is not None:
         driver = initialize_driver()
         if driver:
+            # Wait for user to confirm they are ready (e.g., after scanning QR code)
+            while True:
+                user_input = input("Please scan the QR code and type 'PROCEED' to start sending messages: ")
+                if user_input.strip() == 'PROCEED':
+                    break
+                else:
+                    print("Invalid input. Please type 'PROCEED' when ready.")
+
             log = []
             for index, row in contacts_df.iterrows():
                 first_name = row.get('First name', '')

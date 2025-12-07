@@ -101,5 +101,50 @@ class TestDataHandling(unittest.TestCase):
         # Assert
         self.assertIsNone(result)
 
+class TestIntegration(unittest.TestCase):
+
+    @patch('builtins.input', return_value='PROCEED')
+    @patch('main.initialize_driver')
+    @patch('main.read_contacts')
+    @patch('main.get_excel_file')
+    @patch('main.send_whatsapp_message')
+    def test_tc06_main_flow(self, mock_send, mock_get_file, mock_read, mock_init, mock_input):
+        # Arrange
+        mock_get_file.return_value = "dummy.xlsx"
+        d = {'First name': ['test'], 'Last name': ['user'], 'Telephone number': [123], 'Message': ['hello']}
+        mock_read.return_value = pd.DataFrame(data=d)
+        mock_driver = MagicMock()
+        mock_init.return_value = mock_driver
+        mock_send.return_value = (True, "Success")
+
+        # Act
+        main.main()
+
+        # Assert
+        mock_input.assert_called_once()
+        mock_send.assert_called_once()
+        mock_driver.quit.assert_called_once()
+
+    @patch('builtins.input', side_effect=['wrong', 'PROCEED'])
+    @patch('main.initialize_driver')
+    @patch('main.read_contacts')
+    @patch('main.get_excel_file')
+    @patch('main.send_whatsapp_message')
+    def test_tc07_main_flow_retry_input(self, mock_send, mock_get_file, mock_read, mock_init, mock_input):
+         # Arrange
+        mock_get_file.return_value = "dummy.xlsx"
+        d = {'First name': ['test'], 'Last name': ['user'], 'Telephone number': [123], 'Message': ['hello']}
+        mock_read.return_value = pd.DataFrame(data=d)
+        mock_driver = MagicMock()
+        mock_init.return_value = mock_driver
+        mock_send.return_value = (True, "Success")
+
+        # Act
+        main.main()
+
+        # Assert
+        self.assertEqual(mock_input.call_count, 2)
+        mock_send.assert_called_once()
+
 if __name__ == '__main__':
     unittest.main()
