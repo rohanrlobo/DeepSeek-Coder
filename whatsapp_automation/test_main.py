@@ -3,53 +3,56 @@ from unittest.mock import MagicMock, patch, call
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 import pandas as pd
-import io
-
-# This is a bit of a hack to make the import work without changing the project structure
+import urllib.parse
 import sys
 import os
+
+# Adjust path to import main
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import main
 
 class TestSendMessage(unittest.TestCase):
 
+    @patch('main.is_internet_available', return_value=True)
     @patch('main.WebDriverWait')
-    def test_tc01_send_whatsapp_message_sends_keys_and_clicks_send(self, mock_wait):
+    def test_tc01_send_whatsapp_message_sends_keys_and_clicks_send(self, mock_wait, mock_internet):
         # Arrange
         mock_driver = MagicMock()
-        mock_message_box = MagicMock()
         mock_send_button = MagicMock()
 
-        # Configure the mock_wait to return the mock elements for each of the 3 waits.
-        # We use side_effect to return different mock objects for different waits.
-        mock_wait.return_value.until.side_effect = [
-            MagicMock(),      # For the initial chat-list-search wait
-            mock_message_box, # For the conversation-compose-box wait
-            mock_send_button  # For the send button wait
-        ]
+        # Configure driver.find_element to return the mock button
+        mock_driver.find_element.return_value = mock_send_button
+
+        # Configure wait
+        mock_wait.return_value.until.return_value = True
 
         phone_number = "1234567890"
         message = "Hello, this is a test message."
+        encoded_message = urllib.parse.quote(message)
+        expected_url = f"https://web.whatsapp.com/send?phone=+91{phone_number}&text={encoded_message}"
 
         # Act
         success, status_message = main.send_whatsapp_message(mock_driver, phone_number, message)
 
         # Assert
-        mock_message_box.send_keys.assert_called_once_with(message)
-        mock_send_button.click.assert_called_once()
-        self.assertTrue(success)
-        self.assertEqual(status_message, "Message sent successfully.")
+        # Check URL navigation
+        mock_driver.get.assert_called_once_with(expected_url)
 
+        # Check that we found the button and clicked it
+        mock_driver.find_element.assert_called_with(By.XPATH, '//span[@data-icon="send"]')
+        mock_send_button.click.assert_called_once()
+
+        self.assertTrue(success)
+        self.assertEqual(status_message, "Success")
+
+    @patch('main.is_internet_available', return_value=True)
     @patch('main.WebDriverWait')
-    def test_tc02_send_whatsapp_message_handles_timeout(self, mock_wait):
+    def test_tc02_send_whatsapp_message_handles_timeout(self, mock_wait, mock_internet):
         # Arrange
         mock_driver = MagicMock()
 
-        # Simulate a TimeoutException when waiting for an element
-        mock_wait.return_value.until.side_effect = [
-            MagicMock(), # For the initial chat-list-search wait
-            TimeoutException()
-        ]
+        # Simulate a TimeoutException when waiting for the send button
+        mock_wait.return_value.until.side_effect = TimeoutException()
 
         phone_number = "1234567890"
         message = "This message will fail."
@@ -59,22 +62,27 @@ class TestSendMessage(unittest.TestCase):
 
         # Assert
         self.assertFalse(success)
-        self.assertIn("Timed out", status_message)
-        self.assertIn(phone_number, status_message)
+        self.assertIn("Chat not loaded", status_message)
 
+    @patch('main.is_internet_available', return_value=True)
     @patch('main.webdriver.Chrome')
     @patch('main.WebDriverWait')
-    def test_tc03_phone_number_formatting(self, mock_wait, mock_driver):
+    def test_tc03_phone_number_formatting(self, mock_wait, mock_driver, mock_internet):
         # Arrange
+        # Mocking find_element to avoid failures if the code tries to find the button
+        mock_driver.find_element.return_value = MagicMock()
+
         phone_number = "919876543210"
-        expected_url = f"https://web.whatsapp.com/send?phone=+{phone_number}"
+        message = "message"
+        encoded_message = urllib.parse.quote(message)
+        expected_url = f"https://web.whatsapp.com/send?phone=+{phone_number}&text={encoded_message}"
 
         # Act
-        main.send_whatsapp_message(mock_driver, phone_number, "message")
+        main.send_whatsapp_message(mock_driver, phone_number, message)
 
         # Assert
-        # Check that the driver was called with the correctly formatted number
-        self.assertIn(call.get(expected_url), mock_driver.method_calls)
+        # Check that the driver was called with the correctly formatted number and message
+        mock_driver.get.assert_called_with(expected_url)
 
 class TestDataHandling(unittest.TestCase):
 
